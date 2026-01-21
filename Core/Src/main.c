@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "uart_driver.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,6 +43,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_rx;
+DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -57,6 +60,7 @@ const osThreadAttr_t defaultTask_attributes = {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
 
@@ -98,6 +102,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
@@ -223,6 +228,25 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -257,18 +281,34 @@ static void MX_GPIO_Init(void)
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-  char c;
+  uint8_t byte;
   struct UART_Device *uart_dev = UART_GetDevice("STM32_UART1");
-  uart_dev->Init(uart_dev, 115200, 8, 1, 0);
+  if (!uart_dev) {
+    //printf("Device not found!\n");
+    vTaskDelete(NULL);
+  }
+
+  uart_dev->Init(uart_dev, 115200, UART_MODE_DMA_IDLE);
+  const char *msg = "Huge\r\n";
+  uart_dev->Transmit(uart_dev, msg, strlen(msg), 100);
+
+  static uint8_t rx_buf[64];
+  static int rx_index = 0;
+
   /* Infinite loop */
   for(;;)
   {
-    uart_dev->Transmit(uart_dev, "Huge\r\n", 6, 100);
-    HAL_Delay(100);
-    while(uart_dev->Receive(uart_dev, &c, 100) != 0);
-    c++;
-    uart_dev->Transmit(uart_dev, &c, 1, 100);
-    HAL_Delay(1);
+    if (uart_dev->Receive(uart_dev, &byte, portMAX_DELAY) == 0) {
+      if (rx_index < (sizeof(rx_buf)-1)) {
+        rx_buf[rx_index++] = byte;
+      }
+      if (rx_index >= 63 || byte == '\n') {
+        rx_buf[rx_index] = '\0'; 
+        uart_dev->Transmit(uart_dev, (uint8_t*)"Recv: ", 6, 100);
+        uart_dev->Transmit(uart_dev, rx_buf, rx_index, 1000);
+        rx_index = 0;
+      }
+    }
   }
   /* USER CODE END 5 */
 }

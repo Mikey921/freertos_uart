@@ -219,6 +219,7 @@ void DMA1_Channel5_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
+  // 处理 IDLE 中断
   struct UART_Device *dev = UART_GetDevice("STM32_UART1");
   if (dev) {
     UART_DMA_IdleHandler(dev);

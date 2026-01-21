@@ -1366,7 +1366,7 @@ HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef *huart, uint8_t *pData,
   {
     return HAL_BUSY;
   }
-}
+} 
 
 /**
   * @brief  Sends an amount of data in DMA mode.

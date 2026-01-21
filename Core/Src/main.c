@@ -282,12 +282,14 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   uint8_t byte;
+  // 获取设备
   struct UART_Device *uart_dev = UART_GetDevice("STM32_UART1");
   if (!uart_dev) {
-    //printf("Device not found!\n");
+    printf("Device not found!\n");
     vTaskDelete(NULL);
   }
 
+  // 初始化: 选择模式
   uart_dev->Init(uart_dev, 115200, UART_MODE_DMA_IDLE);
   const char *msg = "Huge\r\n";
   uart_dev->Transmit(uart_dev, msg, strlen(msg), 100);
@@ -298,15 +300,21 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
+    // 接收一个字节(阻塞等待)
     if (uart_dev->Receive(uart_dev, &byte, portMAX_DELAY) == 0) {
+      // 收到数据，存入临时 buffer
       if (rx_index < (sizeof(rx_buf)-1)) {
         rx_buf[rx_index++] = byte;
       }
+      // 如果收到换行符，或者 buffer 满了，就处理
       if (rx_index >= 63 || byte == '\n') {
-        rx_buf[rx_index] = '\0'; 
+        rx_buf[rx_index] = '\0'; // 字符串结尾
+
+        // 回显 (Echo)
         uart_dev->Transmit(uart_dev, (uint8_t*)"Recv: ", 6, 100);
         uart_dev->Transmit(uart_dev, rx_buf, rx_index, 1000);
-        rx_index = 0;
+        
+        rx_index = 0;  // 重置
       }
     }
   }

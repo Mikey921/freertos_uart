@@ -45,12 +45,17 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/uart_driver.c
+    Middlewares/at_socket/tcp_client_test.c
+    Middlewares/at_socket/esp8266.c
+    Middlewares/at_socket/at_command.c
+    Middlewares/at_socket/at_socket.c
     # Add user sources here
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
+    Middlewares/at_socket
 )
 
 # Add project symbols (macros)

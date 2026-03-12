@@ -4,6 +4,7 @@
 #define DMA_RX_BUFFER_SIZE 256  // DMA 接收缓冲区大小 (仅 DMA 模式用)
 
 extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
 
 // --- 私有数据结构定义 ---
 struct UART_Data {
@@ -61,13 +62,17 @@ static int UART_Transmit_OS(struct UART_Device *pDev, const void *data, uint16_t
     struct UART_Data *uart_data = (struct UART_Data *)pDev->privdata;
     int ret = 0;
 
+    if (!uart_data || !uart_data->tx_mutex || !uart_data->tx_semaphore) {
+        return -4;
+    }
+
     // 获取互斥锁
     if (xSemaphoreTake(uart_data->tx_mutex, timeout) != pdTRUE) {
         return -1;
     }
 
     // 清理残留信号量 (防御性编程)
-    xSemaphoreTake(uart_data->tx_semaphore, 0);
+    while(xSemaphoreTake(uart_data->tx_semaphore, 0) == pdTRUE);
 
     // 仅开启中断
     HAL_StatusTypeDef status = HAL_ERROR;
@@ -238,8 +243,24 @@ struct UART_Device g_stm32_uart1 = {
     .privdata = &g_stm32_uart1_data
 };
 
+static struct UART_Data g_stm32_uart2_data = {
+    .handle = &huart2,  // 绑定硬件句柄
+    .rx_queue = NULL,
+    .tx_semaphore = NULL,
+    .tx_mutex = NULL
+};
+
+struct UART_Device g_stm32_uart2 = {
+    .name = "STM32_UART2",
+    .Init = UART_Init,
+    .Transmit = NULL,   // 运行时动态绑定
+    .Receive = NULL,
+    .privdata = &g_stm32_uart2_data
+};
+
 static struct UART_Device *g_uart_devices[] = {
-    &g_stm32_uart1
+    &g_stm32_uart1,
+    &g_stm32_uart2
 };
 
 struct UART_Device *UART_GetDevice(const char *name)

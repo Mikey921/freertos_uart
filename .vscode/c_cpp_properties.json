@@ -2,9 +2,11 @@
     "configurations": [
         {
             "name": "STM32",
-            "compileCommands": [
-                "${workspaceFolder}/build/Debug/compile_commands.json"
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/Middlewares/at_socket"
             ],
+            "compileCommands": "${workspaceFolder}/build/Debug/compile_commands.json",
             "intelliSenseMode": "windows-msvc-x64",
             "cStandard": "c17",
             "cppStandard": "gnu++17"
